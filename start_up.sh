@@ -26,6 +26,9 @@ sudo systemctl restart node_exporter
 
 sudo systemctl status node_exporter
 
+
+############
+sudo sed -i '/^unqualified-search-registries = /c\unqualified-search-registries = ["docker.io"]' /etc/containers/registries.conf
 #############
 
 mkdir -p grafana/data
@@ -47,7 +50,7 @@ chmod -R 777 prometheus grafana
 
 ##############Start grafana-stack
 podman load -q -i grafana-report.tar 
-podman run pod --name grafana-stack -p 3000:3000 -p 8686:8686 -p 8081:8081
+podman pod create --name grafana-stack -p 3000:3000 -p 8686:8686 -p 8081:8081
 podman run -d --name=grafana --pod grafana-stack -v $(pwd)/grafana/data:/var/lib/grafana  grafana/grafana
 podman run -d --name=grafana-image-renderer --pod grafana-stack grafana/grafana-image-renderer:latest
 podman run -d --name=grafana-report --pod grafana-stack localhost/grafana-report:v1 
