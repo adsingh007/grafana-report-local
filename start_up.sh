@@ -26,15 +26,12 @@ sudo systemctl restart node_exporter
 
 sudo systemctl status node_exporter
 
-
-############
-sudo sed -i '/^unqualified-search-registries = /c\unqualified-search-registries = ["docker.io"]' /etc/containers/registries.conf
 #############
 
 mkdir -p grafana/data
 mkdir -p prometheus/data
 mkdir -p prometheus/config
-
+HOST=$(hostname -I |awk '{print $1}')
 tee prometheus/config/prometheus.yml > /dev/null <<EOF
 global:
   scrape_interval: 15s
@@ -42,7 +39,7 @@ global:
 scrape_configs:
 - job_name: node
   static_configs:
-  - targets: ['localhost:9100']
+  - targets: ['$HOST:9100']
 EOF
 
 
@@ -50,10 +47,10 @@ chmod -R 777 prometheus grafana
 
 ##############Start grafana-stack
 podman load -q -i grafana-report.tar 
-podman pod create --name grafana-stack -p 3000:3000 -p 8686:8686 -p 8081:8081
+podman  pod create --name grafana-stack -p 3000:3000 -p 8686:8686 -p 8081:8081
 podman run -d --name=grafana --pod grafana-stack -v $(pwd)/grafana/data:/var/lib/grafana  grafana/grafana
-podman run -d --name=grafana-image-renderer --pod grafana-stack grafana/grafana-image-renderer:latest
-podman run -d --name=grafana-report --pod grafana-stack localhost/grafana-report:v1 
+podman run -d --name=grafana-image-renderer --pod grafana-stack -e GF_RENDERING_SERVER_URL: http://$HOST:8081/render -e GF_RENDERING_CALLBACK_URL: http://$HOST:3000/ grafana/grafana-image-renderer:latest
+podman run -d --name=grafana-report --pod grafana-stack localhost/grafana-report:v1 -ip $HOST:3000 -templates /opt/TinyTeX/templates
 
 #############Start Prometheus
 
@@ -62,4 +59,3 @@ podman run -d --name=prometheus \
   -v $(pwd)/prometheus/data:/prometheus \
   -v $(pwd)/prometheus/config/prometheus.yml:/etc/prometheus/prometheus.yml:ro \
   prom/prometheus
-
